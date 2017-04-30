@@ -29,19 +29,17 @@ end
 
 -- monitor related
 
+function initialize(mon, surface)
+  mon.s = surface.create(mon.X, mon.Y, " ", colors.black, colors.white)
+end
+
 --display text text on monitor, "mon" peripheral
 function draw_text(mon, x, y, text, text_color, bg_color)
-  mon.monitor.setBackgroundColor(bg_color)
-  mon.monitor.setTextColor(text_color)
-  mon.monitor.setCursorPos(x,y)
-  mon.monitor.write(text)
+  mon.s:drawText(x, y, text, bg_color, text_color)
 end
 
 function draw_text_right(mon, offset, y, text, text_color, bg_color)
-  mon.monitor.setBackgroundColor(bg_color)
-  mon.monitor.setTextColor(text_color)
-  mon.monitor.setCursorPos(mon.X-string.len(tostring(text))-offset,y)
-  mon.monitor.write(text)
+  mon.s:drawText(mon.X-string.len(tostring(text))-offset+1, y, text, bg_color, text_color)
 end
 
 function draw_text_lr(mon, x, y, offset, text1, text2, text1_color, text2_color, bg_color)
@@ -49,14 +47,17 @@ function draw_text_lr(mon, x, y, offset, text1, text2, text1_color, text2_color,
 	draw_text_right(mon, offset, y, text2, text2_color, bg_color)
 end
 
+function draw_info(mon, offset, y, text, text_color, bg_color, info_bg_color)
+	draw_text(mon, mon.X - string.len(tostring(text)) - offset - 1, y, "i", text_color, info_bg_color)
+	draw_text_right(mon, offset, y, text, text_color, bg_color)
+end
+
 --draw line on computer terminal
 function draw_line(mon, x, y, length, color)
     if length < 0 then
       length = 0
     end
-    mon.monitor.setBackgroundColor(color)
-    mon.monitor.setCursorPos(x,y)
-    mon.monitor.write(string.rep(" ", length))
+	mon.s:drawLine(x, y, x + length, y, " ", color)
 end
 
 --create progress bar
@@ -73,8 +74,9 @@ end
 function clear(mon)
   term.clear()
   term.setCursorPos(1,1)
-  mon.monitor.setBackgroundColor(colors.black)
-  mon.monitor.clear()
-  mon.monitor.setCursorPos(1,1)
+  mon.s:clear()
 end
 
+function render(mon)
+  mon.s:render(mon.monitor)
+end

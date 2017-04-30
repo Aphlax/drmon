@@ -6,11 +6,13 @@ local targetStrength = 50
 local maxTemperature = 8000
 local safeTemperature = 3000
 local lowestFieldPercent = 15
+local maxStabilizerThroughput = 10000000
 
 local activateOnCharged = 1
 
 -- please leave things untouched from here on
 os.loadAPI("lib/f")
+os.loadAPI("lib/surface")
 
 local version = "0.25"
 -- toggleable via the monitor, use our algorithm to achieve our target field strength or let the user tweak it
@@ -58,6 +60,8 @@ monX, monY = monitor.getSize()
 mon = {}
 mon.monitor,mon.X, mon.Y = monitor, monX, monY
 
+f.initialize(mon, surface)
+
 --write settings to config file
 function save_config()
   sw = fs.open("config.txt", "w")   
@@ -101,11 +105,11 @@ function buttons()
         cFlow = cFlow-10000
       elseif xPos >= 10 and xPos <= 12 then
         cFlow = cFlow-100000
-      elseif xPos >= 17 and xPos <= 19 then
+      elseif xPos >= 18 and xPos <= 20 then
         cFlow = cFlow+100000
-      elseif xPos >= 21 and xPos <= 23 then
+      elseif xPos >= 22 and xPos <= 24 then
         cFlow = cFlow+10000
-      elseif xPos >= 25 and xPos <= 27 then
+      elseif xPos >= 26 and xPos <= 28 then
         cFlow = cFlow+1000
       end
       fluxgate.setSignalLowFlow(cFlow)
@@ -121,11 +125,11 @@ function buttons()
         curInputGate = curInputGate-10000
       elseif xPos >= 10 and xPos <= 12 then
         curInputGate = curInputGate-100000
-      elseif xPos >= 17 and xPos <= 19 then
+      elseif xPos >= 18 and xPos <= 20 then
         curInputGate = curInputGate+100000
-      elseif xPos >= 21 and xPos <= 23 then
+      elseif xPos >= 22 and xPos <= 24 then
         curInputGate = curInputGate+10000
-      elseif xPos >= 25 and xPos <= 27 then
+      elseif xPos >= 26 and xPos <= 28 then
         curInputGate = curInputGate+1000
       end
       inputfluxgate.setSignalLowFlow(curInputGate)
@@ -133,7 +137,7 @@ function buttons()
     end
 
     -- input gate toggle
-    if yPos == 10 and ( xPos == 14 or xPos == 15) then
+    if yPos == 10 and ( xPos >= 14 and xPos <= 16) then
       if autoInputGate == 1 then
         autoInputGate = 0
       else
@@ -154,9 +158,9 @@ function drawButtons(y)
   f.draw_text(mon, 6, y, " <<", colors.white, colors.gray)
   f.draw_text(mon, 10, y, "<<<", colors.white, colors.gray)
 
-  f.draw_text(mon, 17, y, ">>>", colors.white, colors.gray)
-  f.draw_text(mon, 21, y, ">> ", colors.white, colors.gray)
-  f.draw_text(mon, 25, y, " > ", colors.white, colors.gray)
+  f.draw_text(mon, 18, y, ">>>", colors.white, colors.gray)
+  f.draw_text(mon, 22, y, ">> ", colors.white, colors.gray)
+  f.draw_text(mon, 26, y, " > ", colors.white, colors.gray)
 end
 
 
@@ -197,6 +201,10 @@ function update()
 
     f.draw_text_lr(mon, 2, 4, 1, "Generation", f.format_int(ri.generationRate) .. " rf/t", colors.white, colors.lime, colors.black)
 
+	if fluxgate.getSignalLowFlow() >= maxStabilizerThroughput then
+	  f.draw_info(mon, 1, 5, "stabilizer maximum", colors.white, colors.black, colors.blue)
+	end
+	
     local tempColor = colors.red
     if ri.temperature <= 5000 then tempColor = colors.green end
     if ri.temperature >= 5000 and ri.temperature <= 6500 then tempColor = colors.orange end
@@ -210,9 +218,9 @@ function update()
     f.draw_text_lr(mon, 2, 9, 1, "Input Gate", f.format_int(inputfluxgate.getSignalLowFlow()) .. " rf/t", colors.white, colors.blue, colors.black)
 
     if autoInputGate == 1 then
-      f.draw_text(mon, 14, 10, "AU", colors.white, colors.gray)
+      f.draw_text(mon, 14, 10, "AUT", colors.white, colors.gray)
     else
-      f.draw_text(mon, 14, 10, "MA", colors.white, colors.gray)
+      f.draw_text(mon, 14, 10, "MAN", colors.white, colors.gray)
       drawButtons(10)
     end
 
@@ -220,7 +228,7 @@ function update()
     satPercent = math.ceil(ri.energySaturation / ri.maxEnergySaturation * 10000)*.01
 
     f.draw_text_lr(mon, 2, 11, 1, "Energy Saturation", satPercent .. "%", colors.white, colors.white, colors.black)
-    f.progress_bar(mon, 2, 12, mon.X-2, satPercent, 100, colors.blue, colors.gray)
+    f.progress_bar(mon, 2, 12, mon.X-3, satPercent, 100, colors.blue, colors.gray)
 
     local fieldPercent, fieldColor
     fieldPercent = math.ceil(ri.fieldStrength / ri.maxFieldStrength * 10000)*.01
@@ -234,7 +242,7 @@ function update()
     else
       f.draw_text_lr(mon, 2, 14, 1, "Field Strength", fieldPercent .. "%", colors.white, fieldColor, colors.black)
     end
-    f.progress_bar(mon, 2, 15, mon.X-2, fieldPercent, 100, fieldColor, colors.gray)
+    f.progress_bar(mon, 2, 15, mon.X-3, fieldPercent, 100, fieldColor, colors.gray)
 
     local fuelPercent, fuelColor
 
@@ -246,10 +254,12 @@ function update()
     if fuelPercent < 70 and fuelPercent > 30 then fuelColor = colors.orange end
 
     f.draw_text_lr(mon, 2, 17, 1, "Fuel ", fuelPercent .. "%", colors.white, fuelColor, colors.black)
-    f.progress_bar(mon, 2, 18, mon.X-2, fuelPercent, 100, fuelColor, colors.gray)
+    f.progress_bar(mon, 2, 18, mon.X-3, fuelPercent, 100, fuelColor, colors.gray)
 
     f.draw_text_lr(mon, 2, 19, 1, "Action ", action, colors.gray, colors.gray, colors.black)
 
+	f.render(mon)
+	
     -- actual reactor interaction
     --
     if emergencyCharge == true then
@@ -314,4 +324,3 @@ function update()
 end
 
 parallel.waitForAny(buttons, update)
-
